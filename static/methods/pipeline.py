@@ -11,25 +11,25 @@ def pipeline(text):
     edit_text = edit_text.split(" ")
 
     for text in edit_text:
-        if len(text) >= 2:
-            test = text
-            if text[len(text)-1].isalpha() is False:
-                text = text[:-1]
+        test = text
+        if text[len(text)-1].isalpha() is False:
+            text = text[:-1]
 
-            if test[0].isalpha() is False:
-                text = text[:0] + text[(0 + 1):]
-                
-            syllable_count = util.syllable_count(text)
+        if test[0].isalpha() is False:
+            text = text[:0] + text[(0 + 1):]
 
-            if syllable_count != 0:
-                print text
-                print len(text)
-                if str(syllable_count) in syllable_buckets.keys():
-                    syllable_buckets[syllable_count].append(text)
+        syllable_count = util.syllable_count(text)
 
-                else:
-                    syllable_buckets[syllable_count] = []
-                    syllable_buckets[syllable_count].append(text)
+        if syllable_count != 0 and text.isupper() is False:
+            if syllable_count in syllable_buckets.keys():
+                syllable_buckets[syllable_count].add(text)
+
+            else:
+                syllable_buckets[syllable_count] = set()
+                value_list = syllable_buckets[syllable_count]
+
+                if text not in value_list:
+                    syllable_buckets[syllable_count].add(text)
 
     return stopped_text
 
