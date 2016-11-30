@@ -1,7 +1,7 @@
 """ Constants used throughout the application """
 
 # Stop Words
-ENGLISH_STOP_WORDS = ["a", "mr", "about", "above", "after", "again", "against", "all", "am", "and", "any", "arent"
+ENGLISH_STOP_WORDS = [ "MR", "about", "above", "after", "again", "against", "all", "am", "and", "any", "arent"
                                                                                                      "as", "at", "be",
                       "because", "been", "before", "being", "below", "between", "both", "but",
                       "by", "can't", "cannot", "could", "couldnt", "did", "didn't", "do", "does", "doesnt",
