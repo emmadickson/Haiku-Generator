@@ -1,35 +1,42 @@
 import util
+import corpus
+from textblob import TextBlob as tb
 
-# Syllable bucket structure, a dictionary with the keys being syllable numbers and the value lists
-syllable_buckets = {}
+
+
+# Remember to make a haiku the syllable count is
+# 5
+# 7
+# 5
+# Chose first word radomly from a list of keywords ad then build off of those.
 
 
 def pipeline(text):
+    # Eliminate stop words
     stopped_text = util.stop_words(text)
+
+    # Join text and add it to the corpus
     edit_text = " ".join(stopped_text)
-    edit_text = edit_text.replace("-", " ")
-    edit_text = edit_text.split(" ")
+    test = tb(edit_text)
+    corpus.corpus.append(test)
 
-    for text in edit_text:
-        test = text
-        if text[len(text)-1].isalpha() is False:
-            text = text[:-1]
+    # Get the tfidf score for the document
+    tfidf_scores = util.keyword_extraction(test)
 
-        if test[0].isalpha() is False:
-            text = text[:0] + text[(0 + 1):]
+    # Put all the syllables into appropriate buckets.
+    syll_buckets = util.syllable_bucket(edit_text)
 
-        syllable_count = util.syllable_count(text)
+    haiku = []
+    line_one = util.haiku_line(5, syll_buckets, tfidf_scores)
+    line_one = " ".join(line_one)
+    haiku.append(line_one)
+    line_two = util.haiku_line(7, syll_buckets, tfidf_scores)
+    line_two = " ".join(line_two)
+    haiku.append(line_two)
+    line_three = util.haiku_line(5, syll_buckets, tfidf_scores)
+    line_three = " ".join(line_three)
+    haiku.append(line_three)
 
-        if syllable_count != 0 and text.isupper() is False:
-            if syllable_count in syllable_buckets.keys():
-                syllable_buckets[syllable_count].add(text)
+    return str("\n".join(haiku))
 
-            else:
-                syllable_buckets[syllable_count] = set()
-                value_list = syllable_buckets[syllable_count]
-
-                if text not in value_list:
-                    syllable_buckets[syllable_count].add(text)
-
-    return stopped_text
 

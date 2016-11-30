@@ -34,7 +34,7 @@ def pipeline_endpoint():
         stopped_text = pipeline(text)
 
         # 4. Return the hash_list to the backend
-        return (text)
+        return (stopped_text)
 
     else:
         print '\nGET REQUEST RECEIVED TO PIPELINE ENDPOINT'

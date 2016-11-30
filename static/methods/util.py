@@ -1,14 +1,23 @@
 import re
 from nltk.corpus import cmudict
 import Constants
-
+import corpus
+from random import randint
+import pipeline
 d = cmudict.dict()
 personal_OOV = {}
+
+used_word = []
+
+def keyword_extraction(document):
+    scores = {word: corpus.tfidf(word, document, corpus.corpus) for word in document.words}
+    sorted_words = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    return sorted_words
 
 
 def stop_words(unstoppable_text):
     # 0. Start Logging
-    print '\n STARTING STOP_WORDS: Input Type = ', type(unstoppable_text),  # ' Input Value = ', unstoppable_text
+    print '\nSTARTING STOP_WORDS'
 
     unstoppable_text = unstoppable_text.split()
 
@@ -18,7 +27,7 @@ def stop_words(unstoppable_text):
     # 3. Remove stop words from list and rejoin the text as a string
     stopped_words = [word for word in unstoppable_text if word.lower() not in english_stop_words]
 
-    print "\n FINISHING STOP WORDS"
+    print "\nFINISHING STOP WORDS"
     return stopped_words
 
 
@@ -79,5 +88,79 @@ def syllable_count(word):
             return syllable_total
 
 
+def syllable_bucket(edit_text):
+    # Syllable bucket structure, a dictionary with the keys being syllable numbers and the value lists
+    syllable_buckets = {}
+    edit_text = edit_text.replace("-", " ")
+    edit_text = edit_text.split(" ")
 
-syllable_count("caterpillar")
+    # add things to syllable buckets
+    for text in edit_text:
+        test = text
+        if text[len(text) - 1].isalpha() is False:
+            text = text[:-1]
+
+        if test[0].isalpha() is False:
+            text = text[:0] + text[(0 + 1):]
+
+        syllable_c = syllable_count(text)
+
+        if syllable_c != 0 and text.isupper() is False:
+            if syllable_c in syllable_buckets.keys():
+                syllable_buckets[syllable_c].append(text)
+
+            else:
+                syllable_buckets[syllable_c] = []
+                value_list = syllable_buckets[syllable_c]
+
+                if text not in value_list:
+                    syllable_buckets[syllable_c].append(text)
+
+    return syllable_buckets
+
+
+def haiku_line(line_length, syllable_buckets, tfidf_scores):
+    line = []
+    random_number = randint(1, line_length-2)
+    initial_list = list(syllable_buckets[random_number])
+    tuple_list = []
+
+    for init in initial_list:
+        test = [item for item in tfidf_scores if item[0] == init]
+
+        if len(test) > 0:
+            tuple_list.append(test[0])
+    tuple_list = set(tuple_list)
+    tuple_list = list(tuple_list)
+    sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+
+    for word, number in sorted_tuple_list:
+        if word not in line and isinstance(word, basestring) and word not in used_word:
+            line.append(word)
+            used_word.append(word)
+            break
+
+
+    # Number of syllables in first line
+    first_line_count = line_length - random_number;
+    while first_line_count != 0:
+        random_number = randint(1, first_line_count)
+        first_line_count = first_line_count - random_number
+        initial_list = list(syllable_buckets[random_number])
+        tuple_list = []
+
+        for init in initial_list:
+            test = [item for item in tfidf_scores if item[0] == init]
+
+            if len(test) > 0:
+                tuple_list.append(test[0])
+        tuple_list = set(tuple_list)
+        tuple_list = list(tuple_list)
+        sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+
+        for word, number in sorted_tuple_list:
+            if word not in line and isinstance(word, basestring) and word not in used_word:
+                line.append(word)
+                used_word.append(word)
+                break
+    return line
