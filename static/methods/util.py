@@ -109,43 +109,40 @@ def syllable_bucket(edit_text):
 
     # add things to syllable buckets
     for text in edit_text:
-        test = text
-        if text[len(text) - 1].isalpha() is False:
-            text = text[:-1]
+        if len(text) > 0:
+            test = text
+            if text[len(text) - 1].isalpha() is False:
+                text = text[:-1]
 
-        if test[0].isalpha() is False:
-            text = text[:0] + text[(0 + 1):]
+            if test[0].isalpha() is False:
+                text = text[:0] + text[(0 + 1):]
 
-        syllable_c = syllable_count(text)
+            syllable_c = syllable_count(text)
 
-        if syllable_c != 0 and text.isupper() is False:
-            if syllable_c in syllable_buckets.keys():
-                syllable_buckets[syllable_c].append(text)
-
-            else:
-                syllable_buckets[syllable_c] = []
-                value_list = syllable_buckets[syllable_c]
-
-                if text not in value_list:
+            if syllable_c != 0 and text.isupper() is False:
+                if syllable_c in syllable_buckets.keys():
                     syllable_buckets[syllable_c].append(text)
+
+                else:
+                    syllable_buckets[syllable_c] = []
+                    value_list = syllable_buckets[syllable_c]
+
+                    if text not in value_list:
+                        syllable_buckets[syllable_c].append(text)
 
     return syllable_buckets
 
 
 def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict):
     line = []
-    random_number = randint(1, line_length-3)
-    initial_list = list(syllable_buckets[random_number])
-
+    random_number = randint(1, line_length - 3)
     corpus = []
     for key in pos_dict.keys():
-        if key == "RB" and random_number in pos_dict["RB"].keys():
-            corpus = corpus + list(pos_dict["RB"][random_number])
-        if key == "DT" and random_number in pos_dict["DT"].keys():
-            corpus = corpus + list(pos_dict["DT"][random_number])
+        if key in Constants.starting_pos and random_number in pos_dict[key]:
+            corpus = corpus +(list(pos_dict[key][random_number]))
 
     initial_set = set(corpus)
-
+    initial_list = list(initial_set)
     tuple_list = []
 
     for init in initial_list:
@@ -161,21 +158,31 @@ def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict)
         if word not in line and isinstance(word, basestring) and word not in used_word:
             line.append(word)
             used_word.append(word)
+            print(word)
+            print(word_dict[word])
             break
-    print(line)
+
     # Number of syllables in first line
     first_line_count = line_length - random_number
     while first_line_count != 0:
         random_number = randint(1, first_line_count)
         first_line_count = first_line_count - random_number
-        initial_list = list(syllable_buckets[random_number])
+        last_word = line[len(line)-1]
+        last_pos = word_dict[last_word]
+        corpus = []
+        for key in pos_dict.keys():
+            if key in Constants.grammar_rules[last_pos] and random_number in pos_dict[key]:
+                corpus = corpus + (list(pos_dict[key][random_number]))
+
+        initial_set = set(corpus)
+        initial_list = list(initial_set)
         tuple_list = []
 
         for init in initial_list:
             test = [item for item in tfidf_scores if item[0] == init]
-
             if len(test) > 0:
                 tuple_list.append(test[0])
+
         tuple_list = set(tuple_list)
         tuple_list = list(tuple_list)
         sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
@@ -183,10 +190,10 @@ def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict)
         for word, number in sorted_tuple_list:
             if word not in line and isinstance(word, basestring) and word not in used_word:
                 if len(line) > 0:
-                    prev_word = line[len(line)-1]
-
                     line.append(word)
                     used_word.append(word)
+                    print(word)
+                    print(word_dict[word])
                     break
 
     return line
@@ -218,4 +225,3 @@ def pos_tag(text):
             word_pos_dict[pos] = tag
 
     return pos_dict, word_pos_dict
-

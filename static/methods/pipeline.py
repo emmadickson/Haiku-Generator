@@ -42,7 +42,3 @@ def pipeline(text):
     line_three = " ".join(line_three)
     haiku.append(line_three)
     return u'\n'.join(haiku).encode('utf-8')
-
-
-
-
