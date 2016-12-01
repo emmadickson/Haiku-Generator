@@ -22,8 +22,7 @@ def welcome():
 @app.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_endpoint():
     if request.method == 'POST':
-        print '\nPOST REQUEST RECEIVED TO PIPELINE ENDPOINT'
-
+        print '\npost recieved'
         # 1. Receive the Post request
         data = request.json
 
@@ -32,9 +31,9 @@ def pipeline_endpoint():
 
         # 3. Stopped text
         stopped_text = pipeline(text)
-
+        print stopped_text
         # 4. Return the hash_list to the backend
-        return (stopped_text)
+        return stopped_text
 
     else:
         print '\nGET REQUEST RECEIVED TO PIPELINE ENDPOINT'

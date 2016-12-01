@@ -1,4 +1,10 @@
+from __future__ import print_function
+import itertools
+import sys
+from nltk.grammar import Nonterminal
 import re
+import nltk
+from nltk.tokenize import word_tokenize
 from nltk.corpus import cmudict
 import Constants
 import corpus
@@ -9,6 +15,17 @@ personal_OOV = {}
 
 used_word = []
 
+
+def eliminate_upper(text):
+    split_text = text.split()
+    not_upper = []
+    for text in split_text:
+        if text.isupper() is False:
+            not_upper.append(text)
+
+    return " ".join(not_upper)
+
+
 def keyword_extraction(document):
     scores = {word: corpus.tfidf(word, document, corpus.corpus) for word in document.words}
     sorted_words = sorted(scores.items(), key=lambda x: x[1], reverse=True)
@@ -16,9 +33,6 @@ def keyword_extraction(document):
 
 
 def stop_words(unstoppable_text):
-    # 0. Start Logging
-    print '\nSTARTING STOP_WORDS'
-
     unstoppable_text = unstoppable_text.split()
 
     # 2. Hardcoded English stop words, edit at will
@@ -27,7 +41,6 @@ def stop_words(unstoppable_text):
     # 3. Remove stop words from list and rejoin the text as a string
     stopped_words = [word for word in unstoppable_text if word.lower() not in english_stop_words]
 
-    print "\nFINISHING STOP WORDS"
     return stopped_words
 
 
@@ -53,7 +66,7 @@ def syllable_count(word):
             # print "OOV word encountered"
             # The reference from which we determine if we subtract or add syllables
             subtract_syllables = ["cial", "tia", "cius", "cious", "uiet", "gious", "priest", "giu", "dge", "e$", "des$",
-                                  "mes$", "kes$", "nce$", "rles$"]
+                                  "mes$", "kes$", "nce$", "rles$", "ee"]
 
             add_syllables = ["ia", "mc", "riet", "dien", "ien", "iet", "iu", "iest", "io", "ii", "ily", "oala$", "iara$", "ying$",
                              "eate$", "eation$"]
@@ -119,17 +132,27 @@ def syllable_bucket(edit_text):
     return syllable_buckets
 
 
-def haiku_line(line_length, syllable_buckets, tfidf_scores):
+def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict):
     line = []
-    random_number = randint(1, line_length-2)
+    random_number = randint(1, line_length-3)
     initial_list = list(syllable_buckets[random_number])
+
+    corpus = []
+    for key in pos_dict.keys():
+        if key == "RB" and random_number in pos_dict["RB"].keys():
+            corpus = corpus + list(pos_dict["RB"][random_number])
+        if key == "DT" and random_number in pos_dict["DT"].keys():
+            corpus = corpus + list(pos_dict["DT"][random_number])
+
+    initial_set = set(corpus)
+
     tuple_list = []
 
     for init in initial_list:
         test = [item for item in tfidf_scores if item[0] == init]
-
         if len(test) > 0:
             tuple_list.append(test[0])
+
     tuple_list = set(tuple_list)
     tuple_list = list(tuple_list)
     sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
@@ -139,10 +162,9 @@ def haiku_line(line_length, syllable_buckets, tfidf_scores):
             line.append(word)
             used_word.append(word)
             break
-
-
+    print(line)
     # Number of syllables in first line
-    first_line_count = line_length - random_number;
+    first_line_count = line_length - random_number
     while first_line_count != 0:
         random_number = randint(1, first_line_count)
         first_line_count = first_line_count - random_number
@@ -160,7 +182,40 @@ def haiku_line(line_length, syllable_buckets, tfidf_scores):
 
         for word, number in sorted_tuple_list:
             if word not in line and isinstance(word, basestring) and word not in used_word:
-                line.append(word)
-                used_word.append(word)
-                break
+                if len(line) > 0:
+                    prev_word = line[len(line)-1]
+
+                    line.append(word)
+                    used_word.append(word)
+                    break
+
     return line
+
+
+def pos_tag(text):
+    pos_dict = {}
+    word_pos_dict = {}
+    tokens = word_tokenize(text)
+    pos_list = nltk.pos_tag(tokens)
+    for pos, tag in pos_list:
+        if tag in pos_dict.keys():
+            count = syllable_count(pos)
+            if count in pos_dict[tag].keys():
+                pos_dict[tag][count].add(pos)
+            else:
+                count = syllable_count(pos)
+                syllable_count_list = set()
+                syllable_count_list.add(pos)
+                pos_dict[tag][count] = syllable_count_list
+        else:
+            syllable_dict = {}
+            count = syllable_count(pos)
+            syllable_count_list = set()
+            syllable_count_list.add(pos)
+            syllable_dict[count] = syllable_count_list
+            pos_dict[tag] = syllable_dict
+        if pos not in word_pos_dict.keys():
+            word_pos_dict[pos] = tag
+
+    return pos_dict, word_pos_dict
+
