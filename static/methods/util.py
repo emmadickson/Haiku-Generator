@@ -1,20 +1,16 @@
 from __future__ import print_function
-import itertools
-import sys
-from nltk.grammar import Nonterminal
 import re
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import cmudict
 import Constants
 import corpus
+from nltk.corpus import wordnet as wn
 from random import randint
-import pipeline
 d = cmudict.dict()
 personal_OOV = {}
-
+lines = []
 used_word = []
-
 
 def eliminate_upper(text):
     split_text = text.split()
@@ -134,67 +130,116 @@ def syllable_bucket(edit_text):
 
 
 def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict):
+    # The list that will eventually become a list
+
     line = []
-    random_number = randint(1, line_length - 3)
+    # The random syllable number
+    random_number = randint(1, line_length - 2)
+
     corpus = []
+    # Go through all the pos, if its one of the valid starting pos take the appropriate syllable
+    # count list and add it to the corpus
+
     for key in pos_dict.keys():
-        if key in Constants.starting_pos and random_number in pos_dict[key]:
+        if key in Constants.starting_pos  and random_number in pos_dict[key]:
             corpus = corpus +(list(pos_dict[key][random_number]))
 
+    # Eliminate duplicates we just found
     initial_set = set(corpus)
     initial_list = list(initial_set)
-    tuple_list = []
 
+    # Calculate tfidf scores and add them to the tuple list
+    tuple_list = []
     for init in initial_list:
         test = [item for item in tfidf_scores if item[0] == init]
         if len(test) > 0:
             tuple_list.append(test[0])
-
-    tuple_list = set(tuple_list)
-    tuple_list = list(tuple_list)
+    # Sort the tuple list
     sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
 
+    # So at the first appropriate non used word we add it to the list and break
     for word, number in sorted_tuple_list:
         if word not in line and isinstance(word, basestring) and word not in used_word:
+            #new_word = word[0].upper() + word[1:]
             line.append(word)
+            lines.append(word)
             used_word.append(word)
-            print(word)
-            print(word_dict[word])
             break
 
-    # Number of syllables in first line
-    first_line_count = line_length - random_number
-    while first_line_count != 0:
-        random_number = randint(1, first_line_count)
-        first_line_count = first_line_count - random_number
-        last_word = line[len(line)-1]
+    # Number of syllables left in first line
+    syllables_left = line_length - random_number
+
+
+    # While we still need to add syllables to the line
+    while syllables_left != 0:
+        random_number = randint(1, syllables_left)
+        last_word = lines[len(lines) - 1]
+        print("last word " + last_word)
         last_pos = word_dict[last_word]
         corpus = []
+
         for key in pos_dict.keys():
-            if key in Constants.grammar_rules[last_pos] and random_number in pos_dict[key]:
-                corpus = corpus + (list(pos_dict[key][random_number]))
+            if key in Constants.grammar_rules[last_pos]:
+                for k in pos_dict[key]:
+                    if int(k) <= syllables_left:
+                        corpus = corpus + (list(pos_dict[key][k]))
 
-        initial_set = set(corpus)
-        initial_list = list(initial_set)
-        tuple_list = []
+        if len(corpus) == 0:
+            print ("HELP")
+            for tfidf, word in tfidf_scores:
+                if syllable_count(tfidf) <= syllables_left and len(tfidf) > 0:
+                    tfidf = (str(tfidf))
+                    corpus = corpus + ([tfidf])
 
-        for init in initial_list:
-            test = [item for item in tfidf_scores if item[0] == init]
-            if len(test) > 0:
-                tuple_list.append(test[0])
+            initial_set = set(corpus)
+            initial_list = list(initial_set)
+            tuple_list = []
 
-        tuple_list = set(tuple_list)
-        tuple_list = list(tuple_list)
-        sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+            for init in initial_list:
+                test = [item for item in tfidf_scores if item[0] == init]
+                if len(test) > 0:
+                    tuple_list.append(test[0])
 
-        for word, number in sorted_tuple_list:
-            if word not in line and isinstance(word, basestring) and word not in used_word:
-                if len(line) > 0:
-                    line.append(word)
-                    used_word.append(word)
-                    print(word)
-                    print(word_dict[word])
-                    break
+            tuple_list = set(tuple_list)
+            tuple_list = list(tuple_list)
+            sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+
+            for word, number in sorted_tuple_list:
+                if word not in line and isinstance(word, basestring) and word not in used_word:
+                    if len(line) > 0:
+                        line.append(word)
+                        lines.append(word)
+                        used_word.append(word)
+                        syllables_left = syllables_left - syllable_count(word)
+                        break
+
+            for i in line:
+                print(i + " " + word_dict[i])
+        else:
+
+            initial_set = set(corpus)
+            initial_list = list(initial_set)
+            tuple_list = []
+
+            for init in initial_list:
+                test = [item for item in tfidf_scores if item[0] == init]
+                if len(test) > 0:
+                    tuple_list.append(test[0])
+
+            tuple_list = set(tuple_list)
+            tuple_list = list(tuple_list)
+            sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+
+            for word, number in sorted_tuple_list:
+                if word not in line and isinstance(word, basestring) and word not in used_word:
+                    if len(line) > 0:
+                        line.append(word)
+                        lines.append(word)
+                        used_word.append(word)
+                        syllables_left = syllables_left - syllable_count(word)
+                        break
+            for i in line:
+                print(i + " " + word_dict[i])
 
     return line
 

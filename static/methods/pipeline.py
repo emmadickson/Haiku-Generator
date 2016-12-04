@@ -2,9 +2,11 @@ import util
 import corpus
 from textblob import TextBlob as tb
 import re
+import time
 
 
 def pipeline(text):
+    start_time = time.time()
     # Eliminate uppercase
     lower = util.eliminate_upper(text)
     lower = lower.lower()
@@ -41,4 +43,5 @@ def pipeline(text):
     line_three = util.haiku_line(5, syll_buckets, tfidf_scores, pos_dict, word_dict)
     line_three = " ".join(line_three)
     haiku.append(line_three)
+    print("--- %s seconds ---" % (time.time() - start_time))
     return u'\n'.join(haiku).encode('utf-8')

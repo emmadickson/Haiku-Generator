@@ -30,14 +30,13 @@ def pipeline_endpoint():
         text = data["text"]
 
         # 3. Stopped text
-        stopped_text = pipeline(text)
-        print stopped_text
+        haiku = pipeline(text)
         # 4. Return the hash_list to the backend
-        return stopped_text
+        return haiku
 
     else:
         print '\nGET REQUEST RECEIVED TO PIPELINE ENDPOINT'
-        return "You sent a get request to the syllable count endpoint you idiots"
+        return "You sent a get request to the haiku endpoint you idiots"
 
 
 # Read port selected by the cloud for our application
