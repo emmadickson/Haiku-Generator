@@ -28,7 +28,7 @@ def pipeline_endpoint():
 
         # 2. Parse the word passed
         text = data["text"]
-
+        text = text.replace("%20", " ")
         # 3. Stopped text
         haiku = pipeline(text)
         # 4. Return the hash_list to the backend

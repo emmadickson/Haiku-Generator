@@ -1,6 +1,7 @@
 from __future__ import print_function
 import re
 import nltk
+from operator import itemgetter
 from nltk.tokenize import word_tokenize
 from nltk.corpus import cmudict
 import Constants
@@ -11,6 +12,7 @@ d = cmudict.dict()
 personal_OOV = {}
 lines = []
 used_word = []
+
 
 def eliminate_upper(text):
     split_text = text.split()
@@ -26,18 +28,6 @@ def keyword_extraction(document):
     scores = {word: corpus.tfidf(word, document, corpus.corpus) for word in document.words}
     sorted_words = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     return sorted_words
-
-
-def stop_words(unstoppable_text):
-    unstoppable_text = unstoppable_text.split()
-
-    # 2. Hardcoded English stop words, edit at will
-    english_stop_words = Constants.ENGLISH_STOP_WORDS
-
-    # 3. Remove stop words from list and rejoin the text as a string
-    stopped_words = [word for word in unstoppable_text if word.lower() not in english_stop_words]
-
-    return stopped_words
 
 
 def syllable_count(word):
@@ -129,144 +119,170 @@ def syllable_bucket(edit_text):
     return syllable_buckets
 
 
-def haiku_line(line_length, syllable_buckets, tfidf_scores, pos_dict, word_dict):
+def haiku_line(syllables, pos_dict, biposdict, word_dict, biword_dict, tfidf_scores, haiku, start, end):
+    syllables_left = syllables
     # The list that will eventually become a list
-
     line = []
-    # The random syllable number
-    random_number = randint(1, line_length - 2)
 
     corpus = []
     # Go through all the pos, if its one of the valid starting pos take the appropriate syllable
     # count list and add it to the corpus
 
-    for key in pos_dict.keys():
-        if key in Constants.starting_pos  and random_number in pos_dict[key]:
-            corpus = corpus +(list(pos_dict[key][random_number]))
-
-    # Eliminate duplicates we just found
-    initial_set = set(corpus)
-    initial_list = list(initial_set)
-
-    # Calculate tfidf scores and add them to the tuple list
-    tuple_list = []
-    for init in initial_list:
-        test = [item for item in tfidf_scores if item[0] == init]
-        if len(test) > 0:
-            tuple_list.append(test[0])
-    # Sort the tuple list
-    sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
-
-    # So at the first appropriate non used word we add it to the list and break
-    for word, number in sorted_tuple_list:
-        if word not in line and isinstance(word, basestring) and word not in used_word:
-            #new_word = word[0].upper() + word[1:]
-            line.append(word)
-            lines.append(word)
-            used_word.append(word)
-            break
-
-    # Number of syllables left in first line
-    syllables_left = line_length - random_number
-
-
-    # While we still need to add syllables to the line
-    while syllables_left != 0:
-        random_number = randint(1, syllables_left)
-        last_word = lines[len(lines) - 1]
-        print("last word " + last_word)
-        last_pos = word_dict[last_word]
-        corpus = []
-
+    if start is True:
         for key in pos_dict.keys():
-            if key in Constants.grammar_rules[last_pos]:
+            real_keys = key.split()
+            if real_keys[0] in Constants.starting_pos and pos_dict[key]:
                 for k in pos_dict[key]:
-                    if int(k) <= syllables_left:
+                    if k == syllables_left and k != 0:
                         corpus = corpus + (list(pos_dict[key][k]))
 
-        if len(corpus) == 0:
-            print ("HELP")
-            for tfidf, word in tfidf_scores:
-                if syllable_count(tfidf) <= syllables_left and len(tfidf) > 0:
-                    tfidf = (str(tfidf))
-                    corpus = corpus + ([tfidf])
+        for key in biposdict.keys():
+            bikeys = key.split()
+            if bikeys[0] in Constants.starting_pos and biposdict[key]:
+                for k in biposdict[key]:
+                    if k == syllables_left and k != 0:
+                        corpus = corpus + (list(biposdict[key][k]))
 
-            initial_set = set(corpus)
-            initial_list = list(initial_set)
-            tuple_list = []
-
-            for init in initial_list:
-                test = [item for item in tfidf_scores if item[0] == init]
-                if len(test) > 0:
-                    tuple_list.append(test[0])
-
-            tuple_list = set(tuple_list)
-            tuple_list = list(tuple_list)
-            sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
-
-            for word, number in sorted_tuple_list:
-                if word not in line and isinstance(word, basestring) and word not in used_word:
-                    if len(line) > 0:
-                        line.append(word)
-                        lines.append(word)
-                        used_word.append(word)
-                        syllables_left = syllables_left - syllable_count(word)
-                        break
-
-            for i in line:
-                print(i + " " + word_dict[i])
+    else:
+        lastkey = haiku[len(haiku) - 1].split()
+        if len(lastkey) == 3:
+            pos_list = (word_dict[haiku[len(haiku) - 1]]).split()
+            pos_key = pos_list[2]
         else:
+            pos_list = (biword_dict[haiku[len(haiku) - 1]]).split()
+            pos_key = pos_list[1]
+        for key in pos_dict.keys():
+            real_keys = key.split()
+            if end is not True:
+                if real_keys[0] in Constants.grammar_rules[pos_key] and pos_dict[key]:
+                    for k in pos_dict[key]:
+                        if k == syllables_left and k != 0:
+                            corpus = corpus + (list(pos_dict[key][k]))
+            if end is True:
+                if real_keys[0] in Constants.grammar_rules[pos_key] and pos_dict[key] and real_keys[2] in Constants.ending_pos:
+                    for k in pos_dict[key]:
+                        if k == syllables_left and k != 0:
+                            corpus = corpus + (list(pos_dict[key][k]))
 
-            initial_set = set(corpus)
-            initial_list = list(initial_set)
-            tuple_list = []
+        for key in biposdict.keys():
+            bikeys = key.split()
+            if end is not True:
+                if bikeys[0] in Constants.grammar_rules[pos_key] and biposdict[key]:
+                    for k in biposdict[key]:
+                        if k == syllables_left and k != 0:
+                            corpus = corpus + (list(biposdict[key][k]))
+            if end is True:
+                if bikeys[0] in Constants.grammar_rules[pos_key] and biposdict[key] and bikeys[1] in Constants.ending_pos:
+                    for k in biposdict[key]:
+                        if k == syllables_left and k != 0:
+                            corpus = corpus + (list(biposdict[key][k]))
 
-            for init in initial_list:
-                test = [item for item in tfidf_scores if item[0] == init]
-                if len(test) > 0:
-                    tuple_list.append(test[0])
+    # Eliminate duplicates we just found some pos tags n there but w/e
+    initial_set = set(corpus)
+    initial_list = list(initial_set)
+    tuple_list = []
+    for init in initial_list:
+        words = (init.split())
 
-            tuple_list = set(tuple_list)
-            tuple_list = list(tuple_list)
-            sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1])
+        if len(words) == 3:
+            trigram = words[0] + " " + words[1] + " " + words[2]
+            value1 = [item for item in tfidf_scores if item[0] == words[0]]
+            value2 = [item for item in tfidf_scores if item[0] == words[1]]
+            value3 = [item for item in tfidf_scores if item[0] == words[2]]
+            if len(value1) !=0 and len(value2) !=0 and len(value3) != 0:
+                total = (value1[0][1]) + (value2[0][1]) + (value3[0][1])
+                tuple = (trigram, total)
+                tuple_list.append(tuple)
 
-            for word, number in sorted_tuple_list:
-                if word not in line and isinstance(word, basestring) and word not in used_word:
-                    if len(line) > 0:
-                        line.append(word)
-                        lines.append(word)
-                        used_word.append(word)
-                        syllables_left = syllables_left - syllable_count(word)
-                        break
-            for i in line:
-                print(i + " " + word_dict[i])
+        if len(words) == 2:
+            bigram = words[0] + " " + words[1]
+            value1 = [item for item in tfidf_scores if item[0] == words[0]]
+            value2 = [item for item in tfidf_scores if item[0] == words[1]]
+            if len(value1) !=0 and len(value2) !=0:
+                total = (value1[0][1]) + (value2[0][1])
+                tuple = (bigram, total)
+                tuple_list.append(tuple)
 
+    sorted_tuple_list = sorted(tuple_list, key=lambda x: x[1], reverse=True)
+    for i in range(0, len(sorted_tuple_list)):
+        if sorted_tuple_list[i][0] not in haiku and sorted_tuple_list[i][0] != 'group panoply slate':
+            line.append(sorted_tuple_list[i][0])
+            break
     return line
 
 
-def pos_tag(text):
+def pos_tag_tri(text):
     pos_dict = {}
-    word_pos_dict = {}
+    word_dict = {}
+
     tokens = word_tokenize(text)
     pos_list = nltk.pos_tag(tokens)
-    for pos, tag in pos_list:
-        if tag in pos_dict.keys():
-            count = syllable_count(pos)
-            if count in pos_dict[tag].keys():
-                pos_dict[tag][count].add(pos)
-            else:
-                count = syllable_count(pos)
-                syllable_count_list = set()
-                syllable_count_list.add(pos)
-                pos_dict[tag][count] = syllable_count_list
-        else:
-            syllable_dict = {}
-            count = syllable_count(pos)
-            syllable_count_list = set()
-            syllable_count_list.add(pos)
-            syllable_dict[count] = syllable_count_list
-            pos_dict[tag] = syllable_dict
-        if pos not in word_pos_dict.keys():
-            word_pos_dict[pos] = tag
 
-    return pos_dict, word_pos_dict
+    tokens = pos_list
+    shingles = [tokens[i:i + 3] for i in range(len(tokens) - 3 + 1)]
+    for shingle in shingles:
+        for i in range(0, len(shingle)-2, 3):
+            # word = (shingle[i][0])
+            # pos = (shingle[i][1])
+            pos_combo = shingle[i][1] + " " + shingle[i+1][1] + " " + shingle[i+2][1]
+
+            bigram = shingle[i][0] + " " + shingle[i + 1][0] + " " + shingle[i+2][0]
+            if pos_combo in pos_dict.keys():
+                count = syllable_count(bigram)
+                if count in pos_dict[pos_combo].keys() and count != 0:
+                    pos = pos_combo
+                    pos_dict[pos][count].add(bigram)
+                else:
+                    syllable_count_list = set()
+                    syllable_count_list.add(pos_combo)
+                    pos_dict[pos_combo][count] = syllable_count_list
+
+            else:
+                syllable_dict = {}
+                count = syllable_count(bigram)
+                syllable_count_list = set()
+                syllable_count_list.add(bigram)
+                syllable_dict[count] = syllable_count_list
+                pos_dict[pos_combo] = syllable_dict
+
+            if bigram not in word_dict.keys():
+                word_dict[bigram] = pos_combo
+    return pos_dict, word_dict
+
+
+def pos_tag_bi(text):
+    pos_dict = {}
+    word_dict = {}
+
+    tokens = word_tokenize(text)
+    pos_list = nltk.pos_tag(tokens)
+
+    tokens = pos_list
+    shingles = [tokens[i:i + 2] for i in range(len(tokens) - 2 + 1)]
+    for shingle in shingles:
+        for i in range(0, len(shingle)-1, 2):
+            # word = (shingle[i][0])
+            # pos = (shingle[i][1])
+            pos_combo = shingle[i][1] + " " + shingle[i+1][1]
+            bigram = shingle[i][0] + " " + shingle[i + 1][0]
+            if pos_combo in pos_dict.keys():
+                count = syllable_count(bigram)
+                if count in pos_dict[pos_combo].keys() and count != 0:
+                    pos = pos_combo
+                    pos_dict[pos][count].add(bigram)
+                else:
+                    syllable_count_list = set()
+                    syllable_count_list.add(pos_combo)
+                    pos_dict[pos_combo][count] = syllable_count_list
+
+            else:
+                syllable_dict = {}
+                count = syllable_count(bigram)
+                syllable_count_list = set()
+                syllable_count_list.add(bigram)
+                syllable_dict[count] = syllable_count_list
+                pos_dict[pos_combo] = syllable_dict
+
+            if bigram not in word_dict.keys():
+                word_dict[bigram] = pos_combo
+    return pos_dict, word_dict

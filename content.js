@@ -12,11 +12,13 @@ chrome.runtime.onMessage.addListener(
       console.log("in");
       var text = collectText();
       text = text.replace(/(\r\n|\n|\r|\t)/gm," ");
+      text = encodeURI(text)
+      console.log(text);
       var http = new XMLHttpRequest();
       var url = "http://localhost:5000/pipeline";
 
       var params = '{ "text": "' + text + '" }';
-      http.open("POST", url, true);
+      http.open("POST", url);
 
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/json");

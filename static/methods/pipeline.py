@@ -16,32 +16,22 @@ def pipeline(text):
     # Eliminate extraneous characters
     lower = re.sub('[!@#$,.;_()?]', '', lower)
 
-    # Eliminate stop words
-    stopped_text = util.stop_words(lower)
+    tridicts = util.pos_tag_tri(lower)
+    pos_dict_tri = tridicts[0]
+    word_dict_tri = tridicts[1]
+    bidicts = util.pos_tag_bi(lower)
+    pos_dict_bi = bidicts[0]
+    word_dict_bi = bidicts[1]
+    text = tb(lower)
 
-    # Test out Pos tagging
-    dicts = util.pos_tag(lower)
-    word_dict = dicts[1]
-    pos_dict = dicts[0]
-    # Join text and add it to the corpus
-    edit_text = " ".join(stopped_text)
-    test = tb(edit_text)
-    corpus.corpus.append(test)
+    #corpus.corpus.append(text)
 
-    # Get the tfidf score for the document
-    tfidf_scores = util.keyword_extraction(test)
-    # Put all the syllables into appropriate buckets.
-    syll_buckets = util.syllable_bucket(edit_text)
-
-    haiku = []
-    line_one = util.haiku_line(5, syll_buckets, tfidf_scores, pos_dict, word_dict)
-    line_one = " ".join(line_one)
-    haiku.append(line_one)
-    line_two = util.haiku_line(7, syll_buckets, tfidf_scores, pos_dict, word_dict)
-    line_two = " ".join(line_two)
-    haiku.append(line_two)
-    line_three = util.haiku_line(5, syll_buckets, tfidf_scores, pos_dict, word_dict)
-    line_three = " ".join(line_three)
-    haiku.append(line_three)
+    tfidf_scores = util.keyword_extraction(text)
+    line = []
+    line1 = util.haiku_line(5, pos_dict_tri, pos_dict_bi, word_dict_tri, word_dict_bi, tfidf_scores, line, start=True, end=False)
+    line2 = util.haiku_line(7, pos_dict_tri, pos_dict_bi, word_dict_tri, word_dict_bi, tfidf_scores, line1, start=False, end=False)
+    test = line1+line2
+    line3 = util.haiku_line(5, pos_dict_tri, pos_dict_bi, word_dict_tri, word_dict_bi, tfidf_scores, test, start=False, end=True)
+    haiku = line1+line2 + line3
     print("--- %s seconds ---" % (time.time() - start_time))
-    return u'\n'.join(haiku).encode('utf-8')
+    return "\n".join(haiku)
